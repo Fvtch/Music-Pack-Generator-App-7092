@@ -1,50 +1,43 @@
-import { createClient } from '@supabase/supabase-js'
+// Mock Supabase client for demo purposes
+// In a real app, this would be a proper Supabase client
 
-// Project ID will be auto-injected during deployment
-const SUPABASE_URL = 'https://placeholder.supabase.co'
-const SUPABASE_ANON_KEY = 'placeholder-key'
-
-// Create a mock client if credentials are not available
-let supabase;
-
-try {
-  if (SUPABASE_URL === 'https://placeholder.supabase.co' || SUPABASE_ANON_KEY === 'placeholder-key') {
-    // Mock Supabase client for demo purposes
-    supabase = {
-      storage: {
-        from: () => ({
-          upload: async () => ({ data: { path: 'mock-path' }, error: null }),
-          getPublicUrl: () => ({ data: { publicUrl: '/audio/placeholder.mp3' } })
-        })
-      },
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    };
-  } else {
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true
-      }
-    });
-  }
-} catch (error) {
-  console.warn('Supabase not configured, using mock client');
-  // Fallback mock client
-  supabase = {
-    storage: {
-      from: () => ({
-        upload: async () => ({ data: { path: 'mock-path' }, error: null }),
-        getPublicUrl: () => ({ data: { publicUrl: '/audio/placeholder.mp3' } })
+const mockSupabaseClient = {
+  storage: {
+    from: (bucketName) => ({
+      upload: async (path, file) => ({
+        data: { path: `${bucketName}/${path}` },
+        error: null
+      }),
+      getPublicUrl: (path) => ({
+        data: { publicUrl: `/audio/placeholder.mp3` }
       })
-    },
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true
-    }
-  };
-}
+    })
+  },
+  auth: {
+    signUp: async () => ({ data: { user: { id: 'mock-user-id' } }, error: null }),
+    signIn: async () => ({ data: { user: { id: 'mock-user-id' } }, error: null }),
+    signOut: async () => ({ error: null })
+  },
+  from: (tableName) => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => ({ data: null, error: null }),
+        order: () => ({
+          limit: () => ({
+            data: []
+          })
+        })
+      }),
+      order: () => ({
+        limit: () => ({
+          data: []
+        })
+      })
+    }),
+    insert: async () => ({ data: { id: 'mock-id' }, error: null }),
+    update: async () => ({ data: { id: 'mock-id' }, error: null }),
+    delete: async () => ({ data: { id: 'mock-id' }, error: null })
+  })
+};
 
-export default supabase;
+export default mockSupabaseClient;

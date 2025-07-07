@@ -8,6 +8,7 @@ import GeneratedPack from './components/GeneratedPack';
 import SavedPacks from './components/SavedPacks';
 import AudioDB from './components/AudioDB';
 import FeedbackButton from './components/FeedbackButton';
+import AudioTestButton from './components/AudioTestButton';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from './common/SafeIcon';
 import questConfig from './config/questConfig';
@@ -20,7 +21,6 @@ function App() {
   const [generatedPack, setGeneratedPack] = useState(null);
   const [savedPacks, setSavedPacks] = useState([]);
   const [showAudioDB, setShowAudioDB] = useState(false);
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
 
   // Load saved packs from local storage on initial load
   useEffect(() => {
@@ -56,8 +56,8 @@ function App() {
   };
 
   const handleDeletePack = (packId) => {
-    setSavedPacks(prev => prev.filter(pack => pack.id !== packId));
     const updatedPacks = savedPacks.filter(pack => pack.id !== packId);
+    setSavedPacks(updatedPacks);
     localStorage.setItem('ninja-saved-packs', JSON.stringify(updatedPacks));
   };
 
@@ -78,6 +78,9 @@ function App() {
           savedPacksCount={savedPacks.length}
         />
         
+        {/* Audio Test Button - Remove this after testing */}
+        <AudioTestButton />
+        
         <main className="container mx-auto px-4 py-8">
           <AnimatePresence mode="wait">
             {currentView === 'generator' && (
@@ -91,6 +94,7 @@ function App() {
                 <PackGenerator onPackGenerated={handlePackGenerated} />
               </motion.div>
             )}
+            
             {currentView === 'result' && generatedPack && (
               <motion.div
                 key="result"
@@ -106,6 +110,7 @@ function App() {
                 />
               </motion.div>
             )}
+            
             {currentView === 'saved' && (
               <motion.div
                 key="saved"
@@ -123,21 +128,21 @@ function App() {
             )}
           </AnimatePresence>
         </main>
-
-        {/* Floating Supabase Connect Button */}
+        
+        {/* Floating Audio Library Button */}
         <motion.button
           onClick={handleConnectSupabase}
           className="fixed bottom-6 right-6 bg-gradient-to-r from-ninja-accent to-ninja-gold p-3 rounded-full shadow-lg hover:shadow-xl"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          title="Connect Audio Library"
+          title="Sample Library"
         >
           <SafeIcon icon={FiDatabase} className="text-white text-xl" />
         </motion.button>
-
+        
         {/* Feedback Button */}
         <FeedbackButton />
-
+        
         {/* Audio Library Manager Modal */}
         <AnimatePresence>
           {showAudioDB && <AudioDB onClose={() => setShowAudioDB(false)} />}

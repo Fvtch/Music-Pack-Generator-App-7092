@@ -1,90 +1,102 @@
-// Enhanced audio playback and management utilities
-import audioSynth from './audioSynth';
+// Enhanced audio manager with real sample loading and playback
+import audioPlayer from './audioPlayer';
 
-// Tracking currently playing items
+// Tracking playing sounds
 let currentlyPlayingId = null;
-let isAudioInitialized = false;
 
 // Initialize audio on first user interaction
 export const initAudio = () => {
-  if (!isAudioInitialized) {
-    audioSynth.init();
-    isAudioInitialized = true;
-  }
+  const success = audioPlayer.init();
+  console.log(`🎵 Audio manager initialized: ${success ? 'success' : 'failed'}`);
+  return success;
 };
 
-// Audio playback functions
+// Play a sample by name/type
 export const playAudio = async (sample) => {
   try {
-    // Initialize audio if needed (must be called from a user interaction)
-    initAudio();
+    console.log(`🎯 Attempting to play: ${sample.name}`, sample);
     
-    // Stop any currently playing audio
-    if (currentlyPlayingId) {
-      audioSynth.stopSound(currentlyPlayingId);
+    // Initialize audio if needed
+    if (!initAudio()) {
+      console.warn("❌ Audio initialization failed");
+      return null;
     }
 
-    // If sample is already playing, just stop it and return
+    // Stop any currently playing audio
+    if (currentlyPlayingId) {
+      stopAllAudio();
+    }
+
+    // If same sample is playing, just stop it
     if (currentlyPlayingId === sample.name) {
       currentlyPlayingId = null;
       return { id: null, playing: false };
     }
-    
-    // Determine sample type from name
-    const sampleType = getSampleTypeFromName(sample.name);
-    
-    // Generate unique ID for this sound
-    const soundId = sample.name;
-    
+
+    // Determine the URL for the audio file
+    const audioUrl = getAudioUrl(sample);
+    console.log(`🔊 Playing audio from: ${audioUrl}`);
+
     // Play the sound
-    audioSynth.generateSound(soundId, sampleType);
-    currentlyPlayingId = soundId;
+    const sound = await audioPlayer.playSound(audioUrl, { volume: 0.8 });
     
-    // Return a controller object
-    const controller = {
-      id: soundId,
-      playing: true,
-      stop: () => {
-        audioSynth.stopSound(soundId);
-        if (currentlyPlayingId === soundId) {
+    if (sound) {
+      currentlyPlayingId = sample.name;
+      console.log(`✅ Successfully playing: ${sample.name}`);
+      
+      return {
+        id: sample.name,
+        playing: true,
+        stop: () => {
+          sound.stop();
           currentlyPlayingId = null;
         }
-      }
-    };
-    
-    // Auto-stop after 1.5 seconds
-    setTimeout(() => {
-      if (currentlyPlayingId === soundId) {
-        controller.stop();
-      }
-    }, 1500);
-    
-    return controller;
+      };
+    } else {
+      console.warn(`❌ Failed to play: ${sample.name}`);
+      return null;
+    }
   } catch (error) {
-    console.error('Error playing audio:', error);
-    return { id: null, playing: false };
+    console.error('❌ Error in playAudio:', error);
+    return null;
   }
 };
 
 export const stopAllAudio = () => {
-  audioSynth.stopAllSounds();
+  audioPlayer.stopAllSounds();
   currentlyPlayingId = null;
+  console.log('🛑 All audio stopped');
 };
 
-// Helper to determine sample type from name
-function getSampleTypeFromName(name) {
-  const lowerName = name.toLowerCase();
+// Helper to determine the URL for an audio file
+function getAudioUrl(sample) {
+  // Check if the sample has a path property
+  if (sample.path) {
+    // If it's a demo sample, use the demo directory
+    if (sample.isDemo) {
+      return `/audio/demo-samples/${sample.genre}/${sample.category.toLowerCase()}/${getSampleFilename(sample.path)}.mp3`;
+    }
+    
+    // Regular sample
+    return `/audio/${sample.path}.mp3`;
+  }
   
-  if (lowerName.includes('kick')) return 'kick';
-  if (lowerName.includes('snare')) return 'snare';
-  if (lowerName.includes('hihat') || lowerName.includes('hat')) return 'hihat';
-  if (lowerName.includes('808')) return 'bass';
-  if (lowerName.includes('loop')) return 'loop';
-  if (lowerName.includes('melody') || lowerName.includes('.mid')) return 'midi';
-  if (lowerName.includes('bass')) return 'bass';
+  // Fallback to a static path based on name
+  const category = sample.category || 'loops';
+  const genre = sample.genre || 'hip-hop';
   
-  // Default to loop for unknown types
-  return 'loop';
+  // Use the sample name to create a path
+  const filename = sample.name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/\.wav$|\.mp3$|\.aiff$|\.mid$/i, '');
+  
+  return `/audio/${genre}/${category}/${filename}.mp3`;
+}
+
+// Extract the last part of a path as the filename
+function getSampleFilename(path) {
+  return path.split('/').pop();
 }
 
 // Enhanced demo samples with better organization
@@ -106,7 +118,7 @@ export const demoSamples = {
   },
   'house': {
     loops: [
-      { name: 'Deep House Loop 124bpm_01.wav', path: 'house/loops/deep-124', isDemo: true, genre: 'house' },
+      { name: 'Deep House Loop 124bpm_01.wav', path: 'house/loops/deep-house-124', isDemo: true, genre: 'house' },
       { name: 'Tech House Loop 126bpm_01.wav', path: 'house/loops/tech-126', isDemo: true, genre: 'house' }
     ],
     oneShots: [
@@ -117,7 +129,58 @@ export const demoSamples = {
       { name: 'Chord_01.mid', path: 'house/midi/chord-01', isDemo: true, genre: 'house' }
     ]
   },
-  // Other genres remain the same...
+  'trap': {
+    loops: [
+      { name: 'Trap Loop 140bpm_01.wav', path: 'trap/loops/trap-140', isDemo: true, genre: 'trap' },
+      { name: 'Dark Trap Loop 145bpm_01.wav', path: 'trap/loops/dark-145', isDemo: true, genre: 'trap' }
+    ],
+    oneShots: [
+      { name: 'Trap Kick_01.wav', path: 'trap/oneshots/kick-01', isDemo: true, genre: 'trap' },
+      { name: '808 Bass_01.wav', path: 'trap/oneshots/808-01', isDemo: true, genre: 'trap' }
+    ],
+    midi: [
+      { name: 'Trap Melody_01.mid', path: 'trap/midi/melody-01', isDemo: true, genre: 'trap' }
+    ]
+  },
+  'ambient': {
+    loops: [
+      { name: 'Pad Loop 70bpm_01.wav', path: 'ambient/loops/pad-70', isDemo: true, genre: 'ambient' },
+      { name: 'Atmospheric Loop 65bpm_01.wav', path: 'ambient/loops/atmos-65', isDemo: true, genre: 'ambient' }
+    ],
+    oneShots: [
+      { name: 'Bell_01.wav', path: 'ambient/oneshots/bell-01', isDemo: true, genre: 'ambient' },
+      { name: 'Texture_01.wav', path: 'ambient/oneshots/texture-01', isDemo: true, genre: 'ambient' }
+    ],
+    midi: [
+      { name: 'Ambient Pad_01.mid', path: 'ambient/midi/pad-01', isDemo: true, genre: 'ambient' }
+    ]
+  },
+  'pop': {
+    loops: [
+      { name: 'Pop Chord Loop 100bpm_01.wav', path: 'pop/loops/chord-100', isDemo: true, genre: 'pop' },
+      { name: 'Verse Loop 105bpm_01.wav', path: 'pop/loops/verse-105', isDemo: true, genre: 'pop' }
+    ],
+    oneShots: [
+      { name: 'Pop Kick_01.wav', path: 'pop/oneshots/kick-01', isDemo: true, genre: 'pop' },
+      { name: 'Clap_01.wav', path: 'pop/oneshots/clap-01', isDemo: true, genre: 'pop' }
+    ],
+    midi: [
+      { name: 'Pop Melody_01.mid', path: 'pop/midi/melody-01', isDemo: true, genre: 'pop' }
+    ]
+  },
+  'techno': {
+    loops: [
+      { name: 'Techno Loop 130bpm_01.wav', path: 'techno/loops/techno-130', isDemo: true, genre: 'techno' },
+      { name: 'Industrial Loop 132bpm_01.wav', path: 'techno/loops/industrial-132', isDemo: true, genre: 'techno' }
+    ],
+    oneShots: [
+      { name: 'Techno Kick_01.wav', path: 'techno/oneshots/kick-01', isDemo: true, genre: 'techno' },
+      { name: 'Noise Hit_01.wav', path: 'techno/oneshots/noise-01', isDemo: true, genre: 'techno' }
+    ],
+    midi: [
+      { name: 'Techno Sequence_01.mid', path: 'techno/midi/sequence-01', isDemo: true, genre: 'techno' }
+    ]
+  }
 };
 
 // Generate audio sample objects for the pack
